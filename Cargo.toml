@@ -3,7 +3,7 @@ name = "minecraft_query"
 version = "0.1.0"
 edition = "2021"
 description = "A library to get information of minecraft using the status ping [https://wiki.vg/Server_List_Ping#Client_to_server]"
-repository = ""
+repository = "https://github.com/CredibleOpossum/minecraft-query/blob/main/Cargo.toml"
 license = "MIT"
 
 
