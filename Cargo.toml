@@ -1,0 +1,12 @@
+[package]
+name = "minecraft_query"
+version = "0.1.0"
+edition = "2021"
+description = "A library to get information of minecraft using the status ping [https://wiki.vg/Server_List_Ping#Client_to_server]"
+repository = ""
+license = "MIT"
+
+
+[dependencies]
+serde_json = "1.0.79"
+serde = { version = "1.0", features = ["derive"] }
