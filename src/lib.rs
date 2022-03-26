@@ -1,9 +1,13 @@
 use std::error;
 use std::io::prelude::*;
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
+use std::time::Duration;
 
 mod server_object;
 use server_object::ServerStatus;
+
+const TIMEOUT: Duration = Duration::from_secs(5);
+const MAX_PACKET_SIZE: u32 = 1024 * 1024 * 50; // Limit the reponse to 50MB
 
 fn var_int_encode(num: i32) -> Vec<u8> {
     // Encodes into VarInt, https://wiki.vg/VarInt_And_VarLong
@@ -68,7 +72,12 @@ fn status_packet_builder(hostname: &str, port: u16) -> Vec<u8> {
 }
 
 pub fn get_server_json(hostname: &str, port: u16) -> Result<String, Box<dyn error::Error>> {
-    let mut stream = TcpStream::connect(format!("{}:{}", hostname, port))?;
+    let socket_addr = match format!("{}:{}", hostname, port).to_socket_addrs()?.next() {
+        Some(socket) => socket,
+        None => return Err("Failed to parse hostname".into()),
+    };
+
+    let mut stream = TcpStream::connect_timeout(&socket_addr, TIMEOUT)?; // Connect to socket
 
     stream.write_all(&status_packet_builder(hostname, port))?; // Send status request
 
@@ -76,11 +85,17 @@ pub fn get_server_json(hostname: &str, port: u16) -> Result<String, Box<dyn erro
     let _id = var_int_read(&mut stream)?; // Unpack id from status response (unused)
     let string_length = var_int_read(&mut stream)?; // Unpack string length from reponse
 
+    if string_length as u32 > MAX_PACKET_SIZE {
+        return Err("Response too large".into());
+    }
+
     let mut buffer = vec![0; string_length as usize]; // Make buffer the size of the string
 
     stream.read_exact(&mut buffer)?; // Read into buffer
 
-    Ok(String::from_utf8(buffer)?)
+    let json: serde_json::Value = serde_json::from_str(&String::from_utf8(buffer)?)?;
+
+    Ok(json.to_string())
 }
 
 pub fn server_status(hostname: &str, port: u16) -> Result<ServerStatus, Box<dyn error::Error>> {
